@@ -10,6 +10,7 @@ import { TradeJournal } from './pages/TradeJournal';
 import { GameMode } from './pages/GameMode';
 import { FuturesTrading } from './pages/FuturesTrading';
 import { DailyIntelligence } from './pages/DailyIntelligence';
+import { DataIntelligence } from './pages/DataIntelligence'; // ✅ PHASE 5: Added
 import { InsightsView } from './pages/InsightsView';
 import { SettingsView } from './pages/SettingsView';
 import { LoginPage } from './pages/LoginPage';
@@ -93,6 +94,8 @@ function App() {
         return <FrontPage {...props} />;
       case 'research':
         return <ResearchWatchlist {...props} />;
+      case 'data-intelligence': // ✅ PHASE 5: Added Data Intelligence page
+        return <DataIntelligence />;
       case 'calendar':
         return <CalendarView {...props} />;
       case 'learning':
