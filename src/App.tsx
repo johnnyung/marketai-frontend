@@ -10,7 +10,8 @@ import { TradeJournal } from './pages/TradeJournal';
 import { GameMode } from './pages/GameMode';
 import { FuturesTrading } from './pages/FuturesTrading';
 import { DailyIntelligence } from './pages/DailyIntelligence';
-import { DataIntelligence } from './pages/DataIntelligence'; // ✅ PHASE 5: Added
+import { DataIntelligence } from './pages/DataIntelligence';
+import Digest from './pages/Digest';
 import { InsightsView } from './pages/InsightsView';
 import { SettingsView } from './pages/SettingsView';
 import { LoginPage } from './pages/LoginPage';
@@ -91,10 +92,10 @@ function App() {
     const props = { density };
     switch (currentPage) {
       case 'digest':
-        return <FrontPage {...props} />;
+        return <Digest />;
       case 'research':
         return <ResearchWatchlist {...props} />;
-      case 'data-intelligence': // ✅ PHASE 5: Added Data Intelligence page
+      case 'data-intelligence':
         return <DataIntelligence />;
       case 'calendar':
         return <CalendarView {...props} />;
