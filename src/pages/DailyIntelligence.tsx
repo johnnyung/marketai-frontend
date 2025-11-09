@@ -8,6 +8,19 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertCircle, TrendingUp, Globe, DollarSign, Bitcoin, Calendar, RefreshCw } from 'lucide-react';
 
+interface TradingSignal {
+  ticker: string;
+  action: 'BUY' | 'SELL' | 'WATCH';
+  priceTarget: number | null;
+  currentPrice: number | null;
+  confidence: number;
+  riskReward: number;
+  reasoning: string;
+  catalysts: string[];
+  timeframe: string;
+  supportingEntries: number;
+}
+
 interface DailyReport {
   date: string;
   summary: string;
@@ -44,13 +57,32 @@ interface DailyReport {
 
 const DailyIntelligence: React.FC = () => {
   const [report, setReport] = useState<DailyReport | null>(null);
+  const [signals, setSignals] = useState<TradingSignal[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingSignals, setLoadingSignals] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
     fetchLatestReport();
+    fetchTradingSignals();
   }, []);
+
+  const fetchTradingSignals = async () => {
+    try {
+      setLoadingSignals(true);
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/opportunities/signals?limit=5`);
+      const data = await response.json();
+      
+      if (data.success) {
+        setSignals(data.signals);
+      }
+    } catch (err) {
+      console.error('Error fetching signals:', err);
+    } finally {
+      setLoadingSignals(false);
+    }
+  };
 
   const fetchLatestReport = async () => {
     try {
@@ -155,6 +187,113 @@ const DailyIntelligence: React.FC = () => {
           )}
         </Button>
       </div>
+
+      {/* Trading Opportunities */}
+      {!loadingSignals && signals.length > 0 && (
+        <Card className="border-purple-200 bg-gradient-to-br from-purple-50 to-pink-50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-purple-600" />
+              AI Trading Signals
+              <Badge variant="outline" className="ml-auto">
+                {signals.length} Opportunities
+              </Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {signals.map((signal, index) => (
+              <div
+                key={index}
+                className="p-4 bg-white rounded-lg border border-purple-100 hover:shadow-md transition-shadow"
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl font-bold text-gray-800 font-mono">
+                      ${signal.ticker}
+                    </span>
+                    <Badge
+                      variant={
+                        signal.action === 'BUY' ? 'default' :
+                        signal.action === 'SELL' ? 'destructive' :
+                        'secondary'
+                      }
+                      className="text-sm font-semibold"
+                    >
+                      {signal.action}
+                    </Badge>
+                    {signal.priceTarget && (
+                      <span className="text-sm text-gray-600">
+                        @ ${signal.priceTarget.toFixed(2)}
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-right">
+                    <div className="text-xs text-gray-500">Confidence</div>
+                    <div className={`text-lg font-bold ${
+                      signal.confidence >= 80 ? 'text-green-600' :
+                      signal.confidence >= 70 ? 'text-yellow-600' :
+                      'text-gray-600'
+                    }`}>
+                      {signal.confidence}%
+                    </div>
+                  </div>
+                </div>
+
+                <p className="text-gray-700 mb-3 leading-relaxed">
+                  {signal.reasoning}
+                </p>
+
+                <div className="grid grid-cols-3 gap-4 mb-3 text-sm">
+                  <div>
+                    <span className="text-gray-500">Risk/Reward:</span>
+                    <span className="ml-1 font-semibold text-gray-800">
+                      {signal.riskReward.toFixed(1)}:1
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Timeframe:</span>
+                    <span className="ml-1 font-semibold text-gray-800 capitalize">
+                      {signal.timeframe}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Data Points:</span>
+                    <span className="ml-1 font-semibold text-gray-800">
+                      {signal.supportingEntries}
+                    </span>
+                  </div>
+                </div>
+
+                {signal.catalysts && signal.catalysts.length > 0 && (
+                  <div className="border-t border-gray-100 pt-3">
+                    <div className="text-xs font-semibold text-gray-500 mb-2">
+                      KEY CATALYSTS:
+                    </div>
+                    <ul className="space-y-1">
+                      {signal.catalysts.slice(0, 3).map((catalyst, idx) => (
+                        <li key={idx} className="text-sm text-gray-600 flex gap-2">
+                          <span className="text-purple-600">→</span>
+                          <span>{catalyst}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            ))}
+            
+            <div className="text-center pt-2">
+              <button
+                onClick={fetchTradingSignals}
+                disabled={loadingSignals}
+                className="text-sm text-purple-600 hover:text-purple-700 font-medium"
+              >
+                {loadingSignals ? 'Refreshing...' : 'Refresh Signals'}
+              </button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Executive Summary */}
       <Card className="border-blue-200 bg-blue-50">
