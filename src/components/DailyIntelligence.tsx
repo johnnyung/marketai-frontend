@@ -55,7 +55,7 @@ const DailyIntelligence: React.FC = () => {
   const fetchLatestReport = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/intelligence/daily/latest`);
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/intelligence/daily/latest`);
       const data = await response.json();
       
       if (data.success) {
@@ -75,7 +75,7 @@ const DailyIntelligence: React.FC = () => {
   const generateNewReport = async () => {
     try {
       setGenerating(true);
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/intelligence/daily/generate`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/intelligence/daily/generate`, {
         method: 'POST'
       });
       const data = await response.json();
@@ -340,5 +340,4 @@ const DailyIntelligence: React.FC = () => {
   );
 };
 
-export { DailyIntelligence };
 export default DailyIntelligence;

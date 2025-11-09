@@ -34,7 +34,7 @@ interface DigestStats {
   }>;
 }
 
-const Digest: React.FC = () => {
+const DigestBrowser: React.FC = () => {
   const [entries, setEntries] = useState<DigestEntry[]>([]);
   const [stats, setStats] = useState<DigestStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -49,7 +49,7 @@ const Digest: React.FC = () => {
 
   const fetchStats = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/digest/summary`);
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/digest/summary`);
       const data = await response.json();
       setStats(data);
     } catch (error) {
@@ -66,7 +66,7 @@ const Digest: React.FC = () => {
         ...(selectedType !== 'all' && { sourceType: selectedType })
       });
       
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/digest/entries?${params}`);
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/digest/entries?${params}`);
       const data = await response.json();
       
       if (data.success) {
@@ -279,5 +279,4 @@ const Digest: React.FC = () => {
   );
 };
 
-export { Digest };
-export default Digest;
+export default DigestBrowser;
