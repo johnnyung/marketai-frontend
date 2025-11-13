@@ -3,8 +3,9 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'r
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { LoginPage } from './pages/LoginPage';
 import Layout from './components/Layout';
-import { FrontPage } from './pages/FrontPage';
+import Dashboard from './pages/Dashboard';  // NEW - Using proper Dashboard instead of FrontPage
 import Digest from './pages/Digest';
+import DeepDivePage from './pages/DeepDivePage';
 import { FuturesTrading } from './pages/FuturesTrading';
 import { ResearchWatchlist } from './pages/ResearchWatchlist';
 import { TradeJournal } from './pages/TradeJournal';
@@ -14,6 +15,7 @@ import { InsightsView } from './pages/InsightsView';
 import { SettingsView } from './pages/SettingsView';
 import DailyIntelligence from './pages/DailyIntelligence';
 import AITipTracker from './pages/AITipTracker';
+import IntelligenceThreadsPage from './pages/IntelligenceThreadsPage';
 
 // Wrapper for LoginPage with navigation
 function LoginPageWrapper() {
@@ -55,17 +57,32 @@ function App() {
             }
           >
             <Route index element={<Navigate to="/dashboard" replace />} />
-            <Route path="dashboard" element={<FrontPage density="comfort" />} />
-            <Route path="digest" element={<Digest />} />
+            
+            {/* INTELLIGENCE HUB */}
+            <Route path="dashboard" element={<Dashboard />} />
             <Route path="daily-intelligence" element={<DailyIntelligence />} />
+            <Route path="deep-dive" element={<DeepDivePage />} />
+            <Route path="digest" element={<Digest />} />
+            <Route path="intelligence-threads" element={<IntelligenceThreadsPage />} />
+            
+            {/* PERFORMANCE TRACKING */}
             <Route path="ai-tip-tracker" element={<AITipTracker />} />
+            
+            {/* TRADING & LEARNING */}
             <Route path="futures" element={<FuturesTrading density="comfort" />} />
-            <Route path="watchlist" element={<ResearchWatchlist density="comfort" />} />
             <Route path="journal" element={<TradeJournal density="comfort" />} />
-            <Route path="calendar" element={<CalendarView density="comfort" />} />
             <Route path="learning" element={<LearningLab density="comfort" />} />
+            
+            {/* RESEARCH TOOLS */}
+            <Route path="watchlist" element={<ResearchWatchlist density="comfort" />} />
+            <Route path="calendar" element={<CalendarView density="comfort" />} />
+            
+            {/* LEGACY/UTILITY */}
             <Route path="insights" element={<InsightsView density="comfort" />} />
             <Route path="settings" element={<SettingsView density="comfort" />} />
+            
+            {/* LEGACY REDIRECTS */}
+            <Route path="threads" element={<Navigate to="/intelligence-threads" replace />} />
           </Route>
         </Routes>
       </Router>
