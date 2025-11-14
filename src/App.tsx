@@ -3,9 +3,10 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'r
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { LoginPage } from './pages/LoginPage';
 import Layout from './components/Layout';
-import Dashboard from './pages/Dashboard';  // NEW - Using proper Dashboard instead of FrontPage
+import Dashboard from './pages/Dashboard';
 import Digest from './pages/Digest';
 import DeepDivePage from './pages/DeepDivePage';
+import OpportunityHub from './pages/OpportunityHub';
 import { FuturesTrading } from './pages/FuturesTrading';
 import { ResearchWatchlist } from './pages/ResearchWatchlist';
 import { TradeJournal } from './pages/TradeJournal';
@@ -64,6 +65,7 @@ function App() {
             <Route path="deep-dive" element={<DeepDivePage />} />
             <Route path="digest" element={<Digest />} />
             <Route path="intelligence-threads" element={<IntelligenceThreadsPage />} />
+            <Route path="opportunity-hub" element={<OpportunityHub />} />
             
             {/* PERFORMANCE TRACKING */}
             <Route path="ai-tip-tracker" element={<AITipTracker />} />

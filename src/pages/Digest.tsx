@@ -10,8 +10,8 @@ interface DigestEntry {
   ai_summary: string;
   ai_relevance_score: number;
   ai_sentiment?: string;
-  ai_entities_tickers?: string[];
-  ai_tags?: string[];
+  tickers?: string[];
+  tags?: string[];
   event_date: string;
   content_url?: string;
 }
@@ -57,8 +57,8 @@ const Digest: React.FC = () => {
 
       if (response.ok) {
         const data = await response.json();
-        const entriesData = data.entries || data.data || data || [];
-        setEntries(Array.isArray(entriesData) ? entriesData : []);
+        // Backend returns array directly
+        setEntries(Array.isArray(data) ? data : []);
         setLastRefresh(new Date());
       } else {
         setError(`Failed to load entries: ${response.status}`);
@@ -113,8 +113,8 @@ const Digest: React.FC = () => {
       filtered = filtered.filter(entry =>
         entry.ai_summary?.toLowerCase().includes(term) ||
         entry.source_name?.toLowerCase().includes(term) ||
-        entry.ai_entities_tickers?.some(t => t.toLowerCase().includes(term)) ||
-        entry.ai_tags?.some(tag => tag.toLowerCase().includes(term))
+        entry.tickers?.some(t => t.toLowerCase().includes(term)) ||
+        entry.tags?.some(tag => tag.toLowerCase().includes(term))
       );
     }
 
@@ -150,8 +150,9 @@ const Digest: React.FC = () => {
       case 'news':
         return <Newspaper className="w-5 h-5 text-blue-600" />;
       case 'social':
+      case 'social_reddit':
         return <Globe className="w-5 h-5 text-purple-600" />;
-      case 'insider':
+      case 'insider_trade':
         return <DollarSign className="w-5 h-5 text-green-600" />;
       case 'political':
         return <AlertCircle className="w-5 h-5 text-orange-600" />;
@@ -329,9 +330,9 @@ const Digest: React.FC = () => {
 
             <p className="text-gray-700 mb-3">{entry.ai_summary}</p>
 
-            {entry.ai_entities_tickers && entry.ai_entities_tickers.length > 0 && (
+            {entry.tickers && entry.tickers.length > 0 && (
               <div className="flex flex-wrap gap-2 mb-3">
-                {entry.ai_entities_tickers.map((ticker, idx) => (
+                {entry.tickers.map((ticker, idx) => (
                   <span
                     key={idx}
                     className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-semibold"
@@ -342,9 +343,9 @@ const Digest: React.FC = () => {
               </div>
             )}
 
-            {entry.ai_tags && entry.ai_tags.length > 0 && (
+            {entry.tags && entry.tags.length > 0 && (
               <div className="flex flex-wrap gap-2">
-                {entry.ai_tags.map((tag, idx) => (
+                {entry.tags.map((tag, idx) => (
                   <span
                     key={idx}
                     className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs"

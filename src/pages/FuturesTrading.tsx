@@ -4,6 +4,7 @@ import { TrendingUp, TrendingDown, DollarSign, AlertTriangle, Target, Zap, Plus,
 import { Badge } from '../components/Badge';
 import { clsx } from 'clsx';
 import { useAuth } from '../contexts/AuthContext';
+import { API_URL } from '../config/api';
 
 interface FuturesContract {
   symbol: string;
@@ -28,8 +29,6 @@ interface FuturesPosition {
   unrealized_pnl: number;
   margin_per_contract: number;
 }
-
-const API_URL = 'https://marketai-backend-production-397e.up.railway.app';
 
 interface FuturesTradingProps {
   density: 'comfort' | 'compact';

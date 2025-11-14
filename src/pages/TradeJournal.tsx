@@ -3,8 +3,7 @@ import { motion } from 'framer-motion';
 import { Plus, Edit, Trash2, Star, Filter } from 'lucide-react';
 import { Badge } from '../components/Badge';
 import { useAuth } from '../contexts/AuthContext';
-
-const API_URL = 'https://marketai-backend-production-397e.up.railway.app';
+import { API_URL } from '../config/api';
 
 interface JournalEntry {
   id: number;

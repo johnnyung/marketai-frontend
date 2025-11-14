@@ -5,7 +5,7 @@ import { Badge } from '../components/Badge';
 import { useAuth } from '../contexts/AuthContext';
 import { getStockPrice } from '../services/api';
 
-const API_URL = 'https://marketai-backend-production-397e.up.railway.app';
+import { API_URL } from '../config/api';
 
 interface WatchlistItem {
   id: number;

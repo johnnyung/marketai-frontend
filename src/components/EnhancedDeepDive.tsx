@@ -3,8 +3,7 @@
 
 import React, { useState } from 'react';
 import { Search, TrendingUp, TrendingDown, Target, AlertTriangle, Calendar, Building2, BarChart3, CheckCircle, XCircle } from 'lucide-react';
-
-const API_URL = import.meta.env.VITE_API_URL || 'https://marketai-backend-production-397e.up.railway.app';
+import { API_URL } from '../config/api';
 
 interface DeepDiveAnalysis {
   ticker: string;
@@ -79,7 +78,7 @@ export const EnhancedDeepDive: React.FC<EnhancedDeepDiveProps> = ({ recommendedT
     
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch(`${API_URL}/api/deep-dive/enhanced/${symbol}`, {
+      const response = await fetch(`${API_URL}/api/deep-dive/${symbol}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -88,7 +87,7 @@ export const EnhancedDeepDive: React.FC<EnhancedDeepDiveProps> = ({ recommendedT
 
       if (response.ok) {
         const data = await response.json();
-        setAnalysis(data.data);
+        setAnalysis(data.analysis);
       } else {
         alert(`Failed to load analysis for ${symbol}`);
       }
@@ -196,36 +195,39 @@ export const EnhancedDeepDive: React.FC<EnhancedDeepDiveProps> = ({ recommendedT
       {/* Analysis Display */}
       {analysis && !loading && (
         <div className="space-y-6">
-          {/* Header */}
-          <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl shadow-lg p-8 text-white">
-            <div className="flex items-start justify-between mb-4">
+          {/* Header Card */}
+          <div className="bg-gradient-to-br from-blue-600 to-purple-700 rounded-xl shadow-lg p-8 text-white">
+            <div className="flex items-start justify-between mb-6">
               <div>
                 <h1 className="text-4xl font-bold mb-2">{analysis.ticker}</h1>
                 <p className="text-xl text-blue-100">{analysis.companyName}</p>
               </div>
               <div className="text-right">
-                <div className={`px-6 py-3 rounded-lg font-bold text-lg mb-2 ${getRecommendationColor(analysis.recommendation)}`}>
+                <div className={`inline-block px-6 py-3 rounded-lg font-bold text-lg ${getRecommendationColor(analysis.recommendation)}`}>
                   {analysis.recommendation}
                 </div>
-                <div className="text-sm text-blue-100">
-                  Confidence: {analysis.confidence}%
-                </div>
-                {analysis.priceTarget && (
-                  <div className="text-sm text-blue-100 mt-1">
-                    Target: ${analysis.priceTarget}
-                  </div>
-                )}
+                <p className="text-sm text-blue-100 mt-2">{analysis.timeHorizon} outlook</p>
               </div>
             </div>
-            <p className="text-sm text-blue-100">
-              Generated: {new Date(analysis.generatedAt).toLocaleString()} • {analysis.timeHorizon}
-            </p>
+            
+            <div className="grid grid-cols-2 gap-6 pt-6 border-t border-blue-400">
+              <div>
+                <p className="text-blue-200 text-sm mb-1">Confidence Score</p>
+                <p className="text-3xl font-bold">{analysis.confidence}%</p>
+              </div>
+              {analysis.priceTarget && (
+                <div>
+                  <p className="text-blue-200 text-sm mb-1">Price Target</p>
+                  <p className="text-3xl font-bold">${analysis.priceTarget}</p>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Executive Summary */}
           <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
             <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <Target className="w-6 h-6 text-blue-600" />
+              <BarChart3 className="w-6 h-6 text-blue-600" />
               Executive Summary
             </h2>
             <p className="text-gray-700 leading-relaxed whitespace-pre-line">{analysis.executiveSummary}</p>
@@ -234,18 +236,15 @@ export const EnhancedDeepDive: React.FC<EnhancedDeepDiveProps> = ({ recommendedT
           {/* Business Model */}
           <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
             <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <Building2 className="w-6 h-6 text-purple-600" />
-              Business Model Deep Dive
+              <Building2 className="w-6 h-6 text-blue-600" />
+              Business Model
             </h2>
             <p className="text-gray-700 leading-relaxed whitespace-pre-line">{analysis.businessModel}</p>
           </div>
 
           {/* Competitive Landscape */}
           <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <BarChart3 className="w-6 h-6 text-green-600" />
-              Competitive Landscape
-            </h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Competitive Landscape</h2>
             <p className="text-gray-700 leading-relaxed whitespace-pre-line mb-6">{analysis.competitiveLandscape}</p>
             
             {analysis.competitiveMatrix.length > 0 && (
@@ -258,15 +257,15 @@ export const EnhancedDeepDive: React.FC<EnhancedDeepDiveProps> = ({ recommendedT
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
                         <div>
                           <span className="font-semibold text-green-600">Strength:</span>
-                          <p className="text-gray-700">{comp.strength}</p>
+                          <p className="text-gray-700 mt-1">{comp.strength}</p>
                         </div>
                         <div>
                           <span className="font-semibold text-red-600">Weakness:</span>
-                          <p className="text-gray-700">{comp.weakness}</p>
+                          <p className="text-gray-700 mt-1">{comp.weakness}</p>
                         </div>
                         <div>
-                          <span className="font-semibold text-blue-600">Position:</span>
-                          <p className="text-gray-700">{comp.marketPosition}</p>
+                          <span className="font-semibold text-blue-600">Market Position:</span>
+                          <p className="text-gray-700 mt-1">{comp.marketPosition}</p>
                         </div>
                       </div>
                     </div>
@@ -278,15 +277,12 @@ export const EnhancedDeepDive: React.FC<EnhancedDeepDiveProps> = ({ recommendedT
 
           {/* Financial Analysis */}
           <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <BarChart3 className="w-6 h-6 text-blue-600" />
-              Financial Analysis
-            </h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Financial Analysis</h2>
             <p className="text-gray-700 leading-relaxed whitespace-pre-line">{analysis.financialAnalysis}</p>
           </div>
 
-          {/* Bull & Bear Case */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Bull & Bear Cases */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Bull Case */}
             <div className="bg-green-50 rounded-xl shadow-lg border-2 border-green-200 p-6">
               <h2 className="text-2xl font-bold text-green-900 mb-2 flex items-center gap-2">

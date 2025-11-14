@@ -2,8 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Calendar, Filter, TrendingUp } from 'lucide-react';
 import { Badge } from '../components/Badge';
-
-const API_URL = 'https://marketai-backend-production-397e.up.railway.app';
+import { API_URL } from '../config/api';
 
 interface EconomicEvent {
   id: number;
@@ -30,7 +29,13 @@ export function CalendarView({ density }: { density: 'comfort' | 'compact' }) {
 
   const fetchEvents = async () => {
     try {
-      const res = await fetch(`${API_URL}/api/calendar/upcoming`);
+      const token = localStorage.getItem('auth_token');
+      const res = await fetch(`${API_URL}/api/calendar/upcoming`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
       const data = await res.json();
       setEvents(data);
     } catch (err) {

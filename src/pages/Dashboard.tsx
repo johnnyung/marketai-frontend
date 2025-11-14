@@ -35,6 +35,11 @@ const Dashboard: React.FC = () => {
     loadStats();
   }, []);
 
+  const extractTicker = (text: string): string | null => {
+    const match = text.match(/\b[A-Z]{2,5}\b/);
+    return match ? match[0] : null;
+  };
+
   const loadStats = async () => {
     try {
       setLoading(true);
@@ -56,8 +61,8 @@ const Dashboard: React.FC = () => {
         const digestData = await digestRes.json();
         setStats(prev => ({
           ...prev,
-          totalEntries: digestData.total || 0,
-          avgRelevance: digestData.avgRelevance || 0
+          totalEntries: digestData.totalEntries || 0,
+          avgRelevance: Math.round(digestData.byType?.[0]?.avg_score || 0)
         }));
       }
 
@@ -67,7 +72,7 @@ const Dashboard: React.FC = () => {
         const threadsData = await threadsRes.json();
         setStats(prev => ({
           ...prev,
-          activeThreads: threadsData.threads?.length || 0
+          activeThreads: threadsData.threads?.length || threadsData.count || 0
         }));
       }
 
@@ -83,14 +88,26 @@ const Dashboard: React.FC = () => {
       }
 
       // Fetch today's signals (top 3 for preview)
-      const signalsRes = await fetch(`${API_URL}/api/intelligence/signals?count=3`, { headers });
-      if (signalsRes.ok) {
-        const signalsData = await signalsRes.json();
-        setTopSignals(signalsData.signals || []);
-        setStats(prev => ({
-          ...prev,
-          signalsToday: signalsData.signals?.length || 0
-        }));
+      const dailyRes = await fetch(`${API_URL}/api/intelligence/daily/latest`, { headers });
+      if (dailyRes.ok) {
+        const dailyData = await dailyRes.json();
+        const report = dailyData.report;
+        
+        if (report && report.recommendations && Array.isArray(report.recommendations)) {
+          const extractedSignals = report.recommendations.slice(0, 3).map((rec: string) => {
+            const ticker = extractTicker(rec) || 'N/A';
+            return {
+              ticker,
+              action: 'BUY',
+              confidence: 75
+            };
+          });
+          setTopSignals(extractedSignals);
+          setStats(prev => ({
+            ...prev,
+            signalsToday: report.recommendations.length
+          }));
+        }
       }
 
       setLastRefresh(new Date());

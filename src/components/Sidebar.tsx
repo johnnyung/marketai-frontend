@@ -19,7 +19,8 @@ import {
   Menu,
   X,
   Link2,
-  FileText  // NEW ICON for Deep Dive
+  FileText,
+  Rocket  // NEW ICON for Opportunity Hub
 } from 'lucide-react';
 
 const Sidebar: React.FC = () => {
@@ -37,9 +38,10 @@ const Sidebar: React.FC = () => {
     // INTELLIGENCE HUB
     { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { path: '/daily-intelligence', icon: Brain, label: 'Daily Intelligence' },
-    { path: '/deep-dive', icon: FileText, label: 'Deep Dive' },  // NEW!
+    { path: '/deep-dive', icon: FileText, label: 'Deep Dive' },
     { path: '/digest', icon: BookOpen, label: 'Intelligence Digest' },
-    { path: '/intelligence-threads', icon: Link2, label: 'Intelligence Threads' },  // UPDATED PATH
+    { path: '/intelligence-threads', icon: Link2, label: 'Intelligence Threads' },
+    { path: '/opportunity-hub', icon: Rocket, label: 'Opportunity Hub' },  // NEW!
     
     // PERFORMANCE TRACKING
     { path: '/ai-tip-tracker', icon: Target, label: 'AI Tip Tracker' },
