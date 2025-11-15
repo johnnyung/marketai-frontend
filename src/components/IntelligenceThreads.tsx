@@ -47,7 +47,7 @@ export const IntelligenceThreads: React.FC = () => {
   const loadThreads = async () => {
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch(`${API_URL}/api/threads/active`, {
+      const response = await fetch(`${API_URL}/api/intelligence/threads/active`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -68,7 +68,7 @@ export const IntelligenceThreads: React.FC = () => {
   const loadThreadDetail = async (threadId: number) => {
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch(`${API_URL}/api/threads/${threadId}`, {
+      const response = await fetch(`${API_URL}/api/intelligence/threads/${threadId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -92,7 +92,7 @@ export const IntelligenceThreads: React.FC = () => {
     setDetecting(true);
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch(`${API_URL}/api/threads/detect`, {
+      const response = await fetch(`${API_URL}/api/intelligence/threads/detect`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

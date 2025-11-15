@@ -67,7 +67,7 @@ const Dashboard: React.FC = () => {
       }
 
       // Fetch threads count
-      const threadsRes = await fetch(`${API_URL}/api/threads?status=ACTIVE`, { headers });
+      const threadsRes = await fetch(`${API_URL}/api/intelligence/threads/active`, { headers });
       if (threadsRes.ok) {
         const threadsData = await threadsRes.json();
         setStats(prev => ({

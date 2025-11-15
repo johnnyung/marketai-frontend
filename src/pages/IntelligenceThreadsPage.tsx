@@ -20,7 +20,7 @@ const IntelligenceThreadsPage: React.FC = () => {
 
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch(`${API_URL}/api/threads/detect`, {
+      const response = await fetch(`${API_URL}/api/intelligence/threads/detect`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
