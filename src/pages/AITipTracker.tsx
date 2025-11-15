@@ -23,7 +23,15 @@ const AITipTracker: React.FC = () => {
         aiTipTrackerService.getSignals(),
         aiTipTrackerService.getPatternInsights()
       ]);
-      setSignals(signalsData);
+      
+      // FILTER OUT OLD SIGNALS WITHOUT PHASE 4 DATA
+      const validSignals = signalsData.filter(s => 
+        s.analysisScore !== undefined && 
+        s.successProbability !== undefined &&
+        s.analysis !== undefined
+      );
+      
+      setSignals(validSignals);
       setPatternInsights(insightsData);
     } catch (error) {
       console.error('Failed to load data:', error);
@@ -64,9 +72,10 @@ const AITipTracker: React.FC = () => {
       return signal.action === filter;
     })
     .sort((a, b) => {
-      if (sortBy === 'score') return b.analysisScore - a.analysisScore;
-      if (sortBy === 'probability') return b.successProbability - a.successProbability;
-      return b.predictedGainPct - a.predictedGainPct;
+      // FIXED: Null-safe sorting
+      if (sortBy === 'score') return (b.analysisScore || 0) - (a.analysisScore || 0);
+      if (sortBy === 'probability') return (b.successProbability || 0) - (a.successProbability || 0);
+      return (b.predictedGainPct || 0) - (a.predictedGainPct || 0);
     });
 
   const getDimensionBar = (score: number, maxScore: number) => {
@@ -135,8 +144,9 @@ const AITipTracker: React.FC = () => {
           <div className="bg-white rounded-lg border border-gray-200 p-4">
             <div className="text-sm text-gray-600">Avg Score</div>
             <div className="text-2xl font-bold text-blue-600">
+              {/* FIXED: Null-safe average calculation */}
               {signals.length > 0
-                ? Math.round(signals.reduce((sum, s) => sum + s.analysisScore, 0) / signals.length)
+                ? Math.round(signals.reduce((sum, s) => sum + (s.analysisScore || 0), 0) / signals.length)
                 : 0}
               /100
             </div>
@@ -144,8 +154,9 @@ const AITipTracker: React.FC = () => {
           <div className="bg-white rounded-lg border border-gray-200 p-4">
             <div className="text-sm text-gray-600">Avg Success Prob</div>
             <div className="text-2xl font-bold text-green-600">
+              {/* FIXED: Null-safe average calculation */}
               {signals.length > 0
-                ? Math.round(signals.reduce((sum, s) => sum + s.successProbability, 0) / signals.length)
+                ? Math.round(signals.reduce((sum, s) => sum + (s.successProbability || 0), 0) / signals.length)
                 : 0}
               %
             </div>
@@ -180,12 +191,12 @@ const AITipTracker: React.FC = () => {
                       <div className="flex items-center gap-2">
                         <div className="w-24 bg-gray-200 rounded-full h-2">
                           <div
-                            className="bg-purple-600 h-2 rounded-full"
+                            className="bg-purple-500 h-2 rounded-full"
                             style={{ width: `${weight * 100}%` }}
                           />
                         </div>
-                        <span className="text-sm font-semibold text-purple-600 w-12 text-right">
-                          {Math.round(weight * 100)}%
+                        <span className="text-sm font-semibold text-gray-700">
+                          {(weight * 100).toFixed(0)}%
                         </span>
                       </div>
                     </div>
@@ -193,39 +204,33 @@ const AITipTracker: React.FC = () => {
               </div>
             </div>
 
-            {/* Winning Patterns */}
+            {/* Recommendations */}
             <div>
-              <h3 className="text-sm font-semibold text-gray-700 mb-3">Winning Patterns</h3>
-              {patternInsights.winningPatterns.length > 0 ? (
-                <div className="space-y-2">
-                  {patternInsights.winningPatterns.map((pattern, idx) => (
-                    <div key={idx} className="flex items-start gap-2">
-                      <span className="text-green-600 mt-0.5">✓</span>
-                      <span className="text-sm text-gray-700">{pattern}</span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-sm text-gray-500 italic">
-                  {patternInsights.recommendations[0] || 'Collecting data...'}
-                </div>
-              )}
+              <h3 className="text-sm font-semibold text-gray-700 mb-3">Key Recommendations</h3>
+              <ul className="space-y-2">
+                {patternInsights.recommendations.slice(0, 4).map((rec, idx) => (
+                  <li key={idx} className="text-sm text-gray-600 flex items-start gap-2">
+                    <span className="text-purple-600 mt-0.5">→</span>
+                    <span>{rec}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
           </div>
         </div>
       )}
 
-      {/* Filters */}
-      <div className="flex items-center justify-between mb-6">
+      {/* Filters & Sort */}
+      <div className="mb-4 flex items-center gap-4">
         <div className="flex gap-2">
-          {['ALL', 'BUY', 'HOLD', 'WATCH'].map((f) => (
+          {(['ALL', 'BUY', 'HOLD', 'WATCH'] as const).map((f) => (
             <button
               key={f}
-              onClick={() => setFilter(f as any)}
-              className={`px-4 py-2 rounded-lg border transition-colors ${
+              onClick={() => setFilter(f)}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                 filter === f
-                  ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
               {f}
@@ -233,12 +238,12 @@ const AITipTracker: React.FC = () => {
           ))}
         </div>
 
-        <div className="flex gap-2 items-center">
+        <div className="ml-auto flex items-center gap-2">
           <span className="text-sm text-gray-600">Sort by:</span>
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as any)}
-            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
           >
             <option value="score">Analysis Score</option>
             <option value="probability">Success Probability</option>
@@ -247,16 +252,16 @@ const AITipTracker: React.FC = () => {
         </div>
       </div>
 
-      {/* Signals */}
-      {filteredSignals.length === 0 ? (
+      {/* Signals List */}
+      {signals.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
-          <p className="text-gray-500 mb-4">No signals found</p>
+          <p className="text-gray-600 mb-4">No AI signals yet</p>
           <button
             onClick={handleGenerateSignals}
             disabled={generating}
             className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
           >
-            {generating ? 'Generating...' : 'Generate Your First Signals'}
+            Generate First Signals
           </button>
         </div>
       ) : (
@@ -268,9 +273,8 @@ const AITipTracker: React.FC = () => {
             return (
               <div
                 key={signal.id}
-                className="bg-white rounded-lg border border-gray-200 hover:border-blue-400 transition-all duration-200 overflow-hidden"
+                className="bg-white rounded-lg border border-gray-200 hover:border-blue-500 transition-all"
               >
-                {/* Signal Header */}
                 <div
                   className="p-6 cursor-pointer"
                   onClick={() => setExpandedSignal(isExpanded ? null : signal.id!)}
@@ -293,15 +297,16 @@ const AITipTracker: React.FC = () => {
 
                     <div className="text-right ml-6">
                       <div className="text-3xl font-bold text-gray-900 mb-1">
-                        {signal.analysisScore}
+                        {signal.analysisScore || 0}
                         <span className="text-lg text-gray-500">/100</span>
                       </div>
                       <div
                         className={`text-sm font-semibold ${aiTipTrackerService.getProbabilityColor(
-                          signal.successProbability
+                          signal.successProbability || 0
                         )}`}
                       >
-                        {signal.successProbability}% Success
+                        {/* FIXED: Null-safe success probability display */}
+                        {signal.successProbability ? (signal.successProbability * 100).toFixed(0) : '50'}% Success
                       </div>
                     </div>
                   </div>
@@ -311,22 +316,24 @@ const AITipTracker: React.FC = () => {
                     <div>
                       <div className="text-xs text-gray-500">Entry Price</div>
                       <div className="text-lg font-semibold text-gray-900">
-                        ${signal.entryPrice.toFixed(2)}
+                        {/* FIXED: Null-safe toFixed */}
+                        ${(signal.entryPrice || 0).toFixed(2)}
                       </div>
                     </div>
                     <div>
                       <div className="text-xs text-gray-500">Predicted Gain</div>
                       <div className="text-lg font-semibold text-green-600">
-                        +{signal.predictedGainPct.toFixed(1)}%
+                        {/* FIXED: Null-safe toFixed */}
+                        +{(signal.predictedGainPct || 0).toFixed(1)}%
                       </div>
                     </div>
                     <div>
                       <div className="text-xs text-gray-500">Confidence</div>
-                      <div className="text-lg font-semibold text-blue-600">{signal.confidence}%</div>
+                      <div className="text-lg font-semibold text-blue-600">{signal.confidence || 0}%</div>
                     </div>
                     <div>
                       <div className="text-xs text-gray-500">Time Horizon</div>
-                      <div className="text-lg font-semibold text-gray-700">{signal.timeHorizon}</div>
+                      <div className="text-lg font-semibold text-gray-700">{signal.timeHorizon || 'N/A'}</div>
                     </div>
                     <div>
                       <div className="text-xs text-gray-500">Current P/L</div>
@@ -336,14 +343,15 @@ const AITipTracker: React.FC = () => {
                         }`}
                       >
                         {pnl.pnlPct >= 0 ? '+' : ''}
-                        {pnl.pnlPct.toFixed(1)}%
+                        {/* FIXED: Null-safe toFixed */}
+                        {(pnl.pnlPct || 0).toFixed(1)}%
                       </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Expanded Details */}
-                {isExpanded && (
+                {isExpanded && signal.analysis && (
                   <div className="border-t border-gray-200 bg-gray-50 p-6">
                     {/* 8D Analysis */}
                     <div className="mb-6">
@@ -362,6 +370,8 @@ const AITipTracker: React.FC = () => {
                           { key: 'riskAssessment', label: 'Risk Assessment' },
                         ].map(({ key, label }) => {
                           const dimension = signal.analysis[key as keyof typeof signal.analysis] as any;
+                          if (!dimension) return null;
+                          
                           return (
                             <div key={key} className="bg-white rounded-lg p-4 border border-gray-200">
                               <div className="flex items-center justify-between mb-2">
@@ -391,7 +401,7 @@ const AITipTracker: React.FC = () => {
                       <div>
                         <h4 className="text-lg font-bold text-gray-900 mb-3">Catalysts</h4>
                         <ul className="space-y-2">
-                          {signal.catalysts.map((catalyst, idx) => (
+                          {signal.catalysts?.map((catalyst, idx) => (
                             <li key={idx} className="flex items-start gap-2">
                               <span className="text-green-600 mt-0.5">↗</span>
                               <span className="text-sm text-gray-700">{catalyst}</span>
@@ -404,7 +414,7 @@ const AITipTracker: React.FC = () => {
                       <div>
                         <h4 className="text-lg font-bold text-gray-900 mb-3">Risk Factors</h4>
                         <ul className="space-y-2">
-                          {signal.riskFactors.map((risk, idx) => (
+                          {signal.riskFactors?.map((risk, idx) => (
                             <li key={idx} className="flex items-start gap-2">
                               <span className="text-red-600 mt-0.5">⚠</span>
                               <span className="text-sm text-gray-700">{risk}</span>
@@ -419,7 +429,7 @@ const AITipTracker: React.FC = () => {
                       <div>
                         <h4 className="text-sm font-semibold text-gray-700 mb-2">Strengths</h4>
                         <ul className="space-y-1">
-                          {signal.analysis.strengths.map((strength, idx) => (
+                          {signal.analysis.strengths?.map((strength, idx) => (
                             <li key={idx} className="text-xs text-gray-600 flex items-start gap-1">
                               <span className="text-green-600">✓</span>
                               <span>{strength}</span>
@@ -432,7 +442,7 @@ const AITipTracker: React.FC = () => {
                       <div>
                         <h4 className="text-sm font-semibold text-gray-700 mb-2">Concerns</h4>
                         <ul className="space-y-1">
-                          {signal.analysis.concerns.map((concern, idx) => (
+                          {signal.analysis.concerns?.map((concern, idx) => (
                             <li key={idx} className="text-xs text-gray-600 flex items-start gap-1">
                               <span className="text-yellow-600">!</span>
                               <span>{concern}</span>
