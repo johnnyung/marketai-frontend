@@ -17,6 +17,7 @@ import { SettingsView } from './pages/SettingsView';
 import DailyIntelligence from './pages/DailyIntelligence';
 import AITipTracker from './pages/AITipTracker';
 import IntelligenceThreadsPage from './pages/IntelligenceThreadsPage';
+import SystemStatusWidget from './components/SystemStatusWidget';
 
 // Wrapper for LoginPage with navigation
 function LoginPageWrapper() {
@@ -87,6 +88,9 @@ function App() {
             <Route path="threads" element={<Navigate to="/intelligence-threads" replace />} />
           </Route>
         </Routes>
+        
+        {/* System Status Widget - always visible in bottom-right corner */}
+        <SystemStatusWidget />
       </Router>
     </AuthProvider>
   );
