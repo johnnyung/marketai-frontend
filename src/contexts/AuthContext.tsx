@@ -26,7 +26,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Load token from localStorage on mount
   useEffect(() => {
-    const savedToken = localStorage.getItem('auth_token');
+    // Check both 'token' and 'auth_token' for backward compatibility
+    const savedToken = localStorage.getItem('token') || localStorage.getItem('auth_token');
     const savedUser = localStorage.getItem('auth_user');
 
     if (savedToken && savedUser) {
@@ -54,6 +55,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setToken(data.token);
     setUser(data.user);
     
+    // FIXED: Save to both 'token' (for API services) and 'auth_token' (for auth context)
+    localStorage.setItem('token', data.token);
     localStorage.setItem('auth_token', data.token);
     localStorage.setItem('auth_user', JSON.stringify(data.user));
   };
@@ -75,6 +78,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setToken(data.token);
     setUser(data.user);
     
+    // FIXED: Save to both 'token' (for API services) and 'auth_token' (for auth context)
+    localStorage.setItem('token', data.token);
     localStorage.setItem('auth_token', data.token);
     localStorage.setItem('auth_user', JSON.stringify(data.user));
   };
@@ -82,6 +87,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     setToken(null);
     setUser(null);
+    // Remove both keys
+    localStorage.removeItem('token');
     localStorage.removeItem('auth_token');
     localStorage.removeItem('auth_user');
   };
