@@ -1,178 +1,97 @@
+// frontend/src/pages/AITipTracker.tsx
 import React, { useState, useEffect } from 'react';
-import { TrendingUp, TrendingDown, DollarSign, Target, Clock, Award, AlertCircle, RefreshCw } from 'lucide-react';
-import { API_URL } from '../config/api';
-
-interface TipTracker {
-  id: number;
-  ticker: string;
-  company_name: string;
-  recommendation_type: 'BUY' | 'SELL' | 'WATCH';
-  entry_date: string;
-  entry_price: string;
-  shares: string;
-  current_price: string | null;
-  current_pnl: string | null;
-  current_pnl_pct: string | null;
-  status: string;
-  ai_confidence: number;
-  ai_reasoning: string;
-  ai_catalysts: string[] | null;
-  days_held: number;
-  exit_price: string | null;
-  final_pnl: string | null;
-  final_pnl_pct: string | null;
-}
-
-interface Stats {
-  totalPositions: number;
-  openPositions: number;
-  closedPositions: number;
-  totalPnL: number;
-  avgReturn: number;
-  winRate: number;
-  bestPick: TipTracker | null;
-  worstPick: TipTracker | null;
-}
+import aiTipTrackerService, { AITipSignal, PatternInsights } from '../services/aiTipTrackerService';
 
 const AITipTracker: React.FC = () => {
-  const [tips, setTips] = useState<TipTracker[]>([]);
-  const [stats, setStats] = useState<Stats | null>(null);
+  const [signals, setSignals] = useState<AITipSignal[]>([]);
+  const [patternInsights, setPatternInsights] = useState<PatternInsights | null>(null);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<'all' | 'open' | 'closed'>('all');
-  const [error, setError] = useState<string | null>(null);
+  const [generating, setGenerating] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [filter, setFilter] = useState<'ALL' | 'BUY' | 'HOLD' | 'WATCH'>('ALL');
+  const [sortBy, setSortBy] = useState<'score' | 'probability' | 'gain'>('score');
+  const [expandedSignal, setExpandedSignal] = useState<number | null>(null);
 
   useEffect(() => {
-    fetchTips();
+    loadData();
   }, []);
 
-  const fetchTips = async () => {
+  const loadData = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      setError(null);
-      
-      const token = localStorage.getItem('auth_token');
-      if (!token) {
-        setError('Please login to view AI Tip Tracker');
-        setLoading(false);
-        return;
-      }
-
-      const response = await fetch(`${API_URL}/api/intelligence/signals?limit=50`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setTips(data.signals || []);
-        calculateStats(data.signals || []);
-      } else {
-        setError('Failed to load tips');
-      }
-      
-      setLoading(false);
-    } catch (err) {
-      console.error('Failed to fetch tips:', err);
-      setError('Failed to load AI Tip Tracker');
+      const [signalsData, insightsData] = await Promise.all([
+        aiTipTrackerService.getSignals(),
+        aiTipTrackerService.getPatternInsights()
+      ]);
+      setSignals(signalsData);
+      setPatternInsights(insightsData);
+    } catch (error) {
+      console.error('Failed to load data:', error);
+    } finally {
       setLoading(false);
     }
   };
 
-  const calculateStats = (tipsList: TipTracker[]) => {
-    const openTips = tipsList.filter(t => t.status === 'OPEN');
-    const closedTips = tipsList.filter(t => t.status === 'CLOSED');
-    
-    const totalPnL = tipsList.reduce((sum, t) => {
-      const pnl = t.status === 'CLOSED' 
-        ? parseFloat(t.final_pnl || '0')
-        : parseFloat(t.current_pnl || '0');
-      return sum + pnl;
-    }, 0);
+  const handleGenerateSignals = async () => {
+    setGenerating(true);
+    try {
+      const result = await aiTipTrackerService.generateSignals();
+      alert(`✅ Generated ${result.count} new signals!`);
+      await loadData();
+    } catch (error) {
+      alert('❌ Failed to generate signals. Check console for details.');
+    } finally {
+      setGenerating(false);
+    }
+  };
 
-    const avgReturn = tipsList.length > 0
-      ? tipsList.reduce((sum, t) => {
-          const pct = t.status === 'CLOSED'
-            ? parseFloat(t.final_pnl_pct || '0')
-            : parseFloat(t.current_pnl_pct || '0');
-          return sum + pct;
-        }, 0) / tipsList.length
-      : 0;
+  const handleAnalyzePatterns = async () => {
+    setAnalyzing(true);
+    try {
+      const insights = await aiTipTrackerService.analyzePatterns();
+      setPatternInsights(insights);
+      alert('✅ Pattern analysis complete!');
+    } catch (error) {
+      alert('❌ Pattern analysis failed. Need at least 10 closed trades.');
+    } finally {
+      setAnalyzing(false);
+    }
+  };
 
-    const winners = closedTips.filter(t => parseFloat(t.final_pnl || '0') > 0);
-    const winRate = closedTips.length > 0 ? (winners.length / closedTips.length) * 100 : 0;
-
-    const bestPick = [...tipsList].sort((a, b) => {
-      const aPnl = parseFloat(a.current_pnl_pct || a.final_pnl_pct || '0');
-      const bPnl = parseFloat(b.current_pnl_pct || b.final_pnl_pct || '0');
-      return bPnl - aPnl;
-    })[0] || null;
-
-    const worstPick = [...tipsList].sort((a, b) => {
-      const aPnl = parseFloat(a.current_pnl_pct || a.final_pnl_pct || '0');
-      const bPnl = parseFloat(b.current_pnl_pct || b.final_pnl_pct || '0');
-      return aPnl - bPnl;
-    })[0] || null;
-
-    setStats({
-      totalPositions: tipsList.length,
-      openPositions: openTips.length,
-      closedPositions: closedTips.length,
-      totalPnL,
-      avgReturn,
-      winRate,
-      bestPick,
-      worstPick
+  const filteredSignals = signals
+    .filter(signal => {
+      if (filter === 'ALL') return true;
+      return signal.action === filter;
+    })
+    .sort((a, b) => {
+      if (sortBy === 'score') return b.analysisScore - a.analysisScore;
+      if (sortBy === 'probability') return b.successProbability - a.successProbability;
+      return b.predictedGainPct - a.predictedGainPct;
     });
-  };
 
-  const filteredTips = tips.filter(tip => {
-    if (filter === 'all') return true;
-    if (filter === 'open') return tip.status === 'OPEN';
-    if (filter === 'closed') return tip.status === 'CLOSED';
-    return true;
-  });
+  const getDimensionBar = (score: number, maxScore: number) => {
+    const percentage = (score / maxScore) * 100;
+    let color = 'bg-red-500';
+    if (percentage >= 85) color = 'bg-green-500';
+    else if (percentage >= 70) color = 'bg-blue-500';
+    else if (percentage >= 50) color = 'bg-yellow-500';
 
-  const getPnLColor = (pnl: string | null) => {
-    if (!pnl) return 'text-gray-600';
-    const value = parseFloat(pnl);
-    if (value > 0) return 'text-green-600';
-    if (value < 0) return 'text-red-600';
-    return 'text-gray-600';
-  };
-
-  const formatPnL = (pnl: string | null, pnlPct: string | null) => {
-    if (!pnl || !pnlPct) return '$0.00 (0.00%)';
-    const value = parseFloat(pnl);
-    const pct = parseFloat(pnlPct);
-    const sign = value >= 0 ? '+' : '';
-    return `${sign}$${Math.abs(value).toFixed(2)} (${sign}${pct.toFixed(2)}%)`;
+    return (
+      <div className="w-full bg-gray-200 rounded-full h-2">
+        <div
+          className={`${color} h-2 rounded-full transition-all duration-300`}
+          style={{ width: `${percentage}%` }}
+        />
+      </div>
+    );
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
+      <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading AI Tip Tracker...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <div className="text-center">
-          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-          <p className="text-red-600 mb-4">{error}</p>
-          <button
-            onClick={fetchTips}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          >
-            Retry
-          </button>
+          <p className="text-gray-600">Loading AI signals...</p>
         </div>
       </div>
     );
@@ -184,243 +103,351 @@ const AITipTracker: React.FC = () => {
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">💰 AI Tip Tracker</h1>
-            <p className="text-gray-600">
-              Every AI recommendation tracked with $100 mock investment • Proving the AI works
+            <h1 className="text-3xl font-bold text-gray-900">AI Tip Tracker</h1>
+            <p className="text-gray-600 mt-1">
+              Phase 4: Pattern Recognition • 8-Dimension Analysis • Success Probability
             </p>
           </div>
-          <button
-            onClick={fetchTips}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          >
-            <RefreshCw className="w-4 h-4" />
-            Refresh
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={handleAnalyzePatterns}
+              disabled={analyzing}
+              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-colors"
+            >
+              {analyzing ? '🧠 Analyzing...' : '🧠 Analyze Patterns'}
+            </button>
+            <button
+              onClick={handleGenerateSignals}
+              disabled={generating}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            >
+              {generating ? '⚡ Generating...' : '⚡ Generate Signals'}
+            </button>
+          </div>
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-4 gap-4">
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <div className="text-sm text-gray-600">Total Signals</div>
+            <div className="text-2xl font-bold text-gray-900">{signals.length}</div>
+          </div>
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <div className="text-sm text-gray-600">Avg Score</div>
+            <div className="text-2xl font-bold text-blue-600">
+              {signals.length > 0
+                ? Math.round(signals.reduce((sum, s) => sum + s.analysisScore, 0) / signals.length)
+                : 0}
+              /100
+            </div>
+          </div>
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <div className="text-sm text-gray-600">Avg Success Prob</div>
+            <div className="text-2xl font-bold text-green-600">
+              {signals.length > 0
+                ? Math.round(signals.reduce((sum, s) => sum + s.successProbability, 0) / signals.length)
+                : 0}
+              %
+            </div>
+          </div>
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <div className="text-sm text-gray-600">Pattern Learning</div>
+            <div className="text-2xl font-bold text-purple-600">
+              {patternInsights ? 'Active 🧠' : 'Collecting'}
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Stats Dashboard */}
-      {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
-            <div className="flex items-center justify-between mb-2">
-              <Target className="w-8 h-8 text-blue-600" />
-              <span className="text-2xl font-bold text-gray-900">{stats.totalPositions}</span>
-            </div>
-            <p className="text-sm text-gray-600">Total Signals</p>
-            <p className="text-xs text-gray-500 mt-1">
-              {stats.openPositions} open, {stats.closedPositions} closed
-            </p>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
-            <div className="flex items-center justify-between mb-2">
-              <DollarSign className={`w-8 h-8 ${stats.totalPnL >= 0 ? 'text-green-600' : 'text-red-600'}`} />
-              <span className={`text-2xl font-bold ${stats.totalPnL >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {stats.totalPnL >= 0 ? '+' : ''}{stats.totalPnL.toFixed(2)}
-              </span>
-            </div>
-            <p className="text-sm text-gray-600">Total P/L</p>
-            <p className="text-xs text-gray-500 mt-1">
-              Across all {stats.totalPositions} positions
-            </p>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
-            <div className="flex items-center justify-between mb-2">
-              <TrendingUp className="w-8 h-8 text-purple-600" />
-              <span className="text-2xl font-bold text-gray-900">{stats.avgReturn.toFixed(2)}%</span>
-            </div>
-            <p className="text-sm text-gray-600">Avg Return</p>
-            <p className="text-xs text-gray-500 mt-1">
-              Per position
-            </p>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
-            <div className="flex items-center justify-between mb-2">
-              <Award className="w-8 h-8 text-yellow-600" />
-              <span className="text-2xl font-bold text-gray-900">{stats.winRate.toFixed(0)}%</span>
-            </div>
-            <p className="text-sm text-gray-600">Win Rate</p>
-            <p className="text-xs text-gray-500 mt-1">
-              {stats.closedPositions} closed positions
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Best/Worst Picks */}
-      {stats && (stats.bestPick || stats.worstPick) && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-          {stats.bestPick && (
-            <div className="bg-green-50 rounded-lg border border-green-200 p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <TrendingUp className="w-5 h-5 text-green-600" />
-                <h3 className="font-semibold text-green-900">Best Pick</h3>
+      {/* Pattern Insights */}
+      {patternInsights && (
+        <div className="mb-6 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg border border-purple-200 p-6">
+          <h2 className="text-xl font-bold text-gray-900 mb-4">🧠 Pattern Insights</h2>
+          
+          <div className="grid grid-cols-2 gap-6">
+            {/* Dimension Weights */}
+            <div>
+              <h3 className="text-sm font-semibold text-gray-700 mb-3">Learned Dimension Weights</h3>
+              <div className="space-y-2">
+                {Object.entries(patternInsights.dimensionWeights)
+                  .sort(([, a], [, b]) => b - a)
+                  .slice(0, 4)
+                  .map(([dimension, weight]) => (
+                    <div key={dimension} className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600 capitalize">
+                        {dimension.replace(/([A-Z])/g, ' $1').trim()}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <div className="w-24 bg-gray-200 rounded-full h-2">
+                          <div
+                            className="bg-purple-600 h-2 rounded-full"
+                            style={{ width: `${weight * 100}%` }}
+                          />
+                        </div>
+                        <span className="text-sm font-semibold text-purple-600 w-12 text-right">
+                          {Math.round(weight * 100)}%
+                        </span>
+                      </div>
+                    </div>
+                  ))}
               </div>
-              <p className="text-lg font-bold text-green-900">{stats.bestPick.ticker}</p>
-              <p className="text-sm text-green-700">
-                {formatPnL(
-                  stats.bestPick.current_pnl || stats.bestPick.final_pnl,
-                  stats.bestPick.current_pnl_pct || stats.bestPick.final_pnl_pct
-                )}
-              </p>
             </div>
-          )}
 
-          {stats.worstPick && (
-            <div className="bg-red-50 rounded-lg border border-red-200 p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <TrendingDown className="w-5 h-5 text-red-600" />
-                <h3 className="font-semibold text-red-900">Worst Pick</h3>
-              </div>
-              <p className="text-lg font-bold text-red-900">{stats.worstPick.ticker}</p>
-              <p className="text-sm text-red-700">
-                {formatPnL(
-                  stats.worstPick.current_pnl || stats.worstPick.final_pnl,
-                  stats.worstPick.current_pnl_pct || stats.worstPick.final_pnl_pct
-                )}
-              </p>
+            {/* Winning Patterns */}
+            <div>
+              <h3 className="text-sm font-semibold text-gray-700 mb-3">Winning Patterns</h3>
+              {patternInsights.winningPatterns.length > 0 ? (
+                <div className="space-y-2">
+                  {patternInsights.winningPatterns.map((pattern, idx) => (
+                    <div key={idx} className="flex items-start gap-2">
+                      <span className="text-green-600 mt-0.5">✓</span>
+                      <span className="text-sm text-gray-700">{pattern}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-sm text-gray-500 italic">
+                  {patternInsights.recommendations[0] || 'Collecting data...'}
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
       )}
 
       {/* Filters */}
-      <div className="bg-white rounded-lg shadow-md border border-gray-200 p-4 mb-6">
+      <div className="flex items-center justify-between mb-6">
         <div className="flex gap-2">
-          <button
-            onClick={() => setFilter('all')}
-            className={`px-4 py-2 rounded-lg font-medium transition ${
-              filter === 'all'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
+          {['ALL', 'BUY', 'HOLD', 'WATCH'].map((f) => (
+            <button
+              key={f}
+              onClick={() => setFilter(f as any)}
+              className={`px-4 py-2 rounded-lg border transition-colors ${
+                filter === f
+                  ? 'bg-blue-600 text-white border-blue-600'
+                  : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
+              }`}
+            >
+              {f}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex gap-2 items-center">
+          <span className="text-sm text-gray-600">Sort by:</span>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as any)}
+            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
-            All ({tips.length})
-          </button>
-          <button
-            onClick={() => setFilter('open')}
-            className={`px-4 py-2 rounded-lg font-medium transition ${
-              filter === 'open'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            Open ({tips.filter(t => t.status === 'OPEN').length})
-          </button>
-          <button
-            onClick={() => setFilter('closed')}
-            className={`px-4 py-2 rounded-lg font-medium transition ${
-              filter === 'closed'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            Closed ({tips.filter(t => t.status === 'CLOSED').length})
-          </button>
+            <option value="score">Analysis Score</option>
+            <option value="probability">Success Probability</option>
+            <option value="gain">Predicted Gain</option>
+          </select>
         </div>
       </div>
 
-      {/* Tips List */}
-      <div className="space-y-4">
-        {filteredTips.map((tip) => (
-          <div
-            key={tip.id}
-            className="bg-white rounded-lg shadow-md border border-gray-200 p-6 hover:shadow-lg transition-shadow"
+      {/* Signals */}
+      {filteredSignals.length === 0 ? (
+        <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
+          <p className="text-gray-500 mb-4">No signals found</p>
+          <button
+            onClick={handleGenerateSignals}
+            disabled={generating}
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
           >
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex items-center gap-4">
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="text-2xl font-bold text-gray-900">{tip.ticker}</h3>
-                    <span className={`px-2 py-1 rounded text-xs font-semibold ${
-                      tip.recommendation_type === 'BUY'
-                        ? 'bg-green-100 text-green-800'
-                        : tip.recommendation_type === 'SELL'
-                        ? 'bg-red-100 text-red-800'
-                        : 'bg-yellow-100 text-yellow-800'
-                    }`}>
-                      {tip.recommendation_type}
-                    </span>
-                    <span className={`px-2 py-1 rounded text-xs font-semibold ${
-                      tip.status === 'OPEN'
-                        ? 'bg-blue-100 text-blue-800'
-                        : 'bg-gray-100 text-gray-800'
-                    }`}>
-                      {tip.status}
-                    </span>
+            {generating ? 'Generating...' : 'Generate Your First Signals'}
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {filteredSignals.map((signal) => {
+            const isExpanded = expandedSignal === signal.id;
+            const pnl = aiTipTrackerService.calculatePnL(signal);
+
+            return (
+              <div
+                key={signal.id}
+                className="bg-white rounded-lg border border-gray-200 hover:border-blue-400 transition-all duration-200 overflow-hidden"
+              >
+                {/* Signal Header */}
+                <div
+                  className="p-6 cursor-pointer"
+                  onClick={() => setExpandedSignal(isExpanded ? null : signal.id!)}
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="text-2xl font-bold text-gray-900">{signal.ticker}</h3>
+                        <span
+                          className={`px-3 py-1 rounded-full text-sm font-semibold border ${aiTipTrackerService.getRecommendationColor(
+                            signal.action
+                          )}`}
+                        >
+                          {signal.action}
+                        </span>
+                        <span className="text-sm text-gray-500">{signal.companyName}</span>
+                      </div>
+                      <p className="text-gray-600 text-sm line-clamp-2">{signal.reasoning}</p>
+                    </div>
+
+                    <div className="text-right ml-6">
+                      <div className="text-3xl font-bold text-gray-900 mb-1">
+                        {signal.analysisScore}
+                        <span className="text-lg text-gray-500">/100</span>
+                      </div>
+                      <div
+                        className={`text-sm font-semibold ${aiTipTrackerService.getProbabilityColor(
+                          signal.successProbability
+                        )}`}
+                      >
+                        {signal.successProbability}% Success
+                      </div>
+                    </div>
                   </div>
-                  <p className="text-sm text-gray-600">{tip.company_name}</p>
+
+                  {/* Key Metrics */}
+                  <div className="grid grid-cols-5 gap-4 pt-4 border-t border-gray-100">
+                    <div>
+                      <div className="text-xs text-gray-500">Entry Price</div>
+                      <div className="text-lg font-semibold text-gray-900">
+                        ${signal.entryPrice.toFixed(2)}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-500">Predicted Gain</div>
+                      <div className="text-lg font-semibold text-green-600">
+                        +{signal.predictedGainPct.toFixed(1)}%
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-500">Confidence</div>
+                      <div className="text-lg font-semibold text-blue-600">{signal.confidence}%</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-500">Time Horizon</div>
+                      <div className="text-lg font-semibold text-gray-700">{signal.timeHorizon}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-500">Current P/L</div>
+                      <div
+                        className={`text-lg font-semibold ${
+                          pnl.pnlPct >= 0 ? 'text-green-600' : 'text-red-600'
+                        }`}
+                      >
+                        {pnl.pnlPct >= 0 ? '+' : ''}
+                        {pnl.pnlPct.toFixed(1)}%
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
 
-              <div className="text-right">
-                <p className={`text-2xl font-bold ${getPnLColor(tip.current_pnl || tip.final_pnl)}`}>
-                  {formatPnL(
-                    tip.current_pnl || tip.final_pnl,
-                    tip.current_pnl_pct || tip.final_pnl_pct
-                  )}
-                </p>
-                <p className="text-xs text-gray-500 flex items-center gap-1 justify-end mt-1">
-                  <Clock className="w-3 h-3" />
-                  {tip.days_held} days held
-                </p>
-              </div>
-            </div>
+                {/* Expanded Details */}
+                {isExpanded && (
+                  <div className="border-t border-gray-200 bg-gray-50 p-6">
+                    {/* 8D Analysis */}
+                    <div className="mb-6">
+                      <h4 className="text-lg font-bold text-gray-900 mb-4">
+                        8-Dimension Comprehensive Analysis
+                      </h4>
+                      <div className="grid grid-cols-2 gap-4">
+                        {[
+                          { key: 'executiveQuality', label: 'Executive Quality' },
+                          { key: 'businessQuality', label: 'Business Quality (Moat)' },
+                          { key: 'financialStrength', label: 'Financial Strength' },
+                          { key: 'industryPosition', label: 'Industry Position' },
+                          { key: 'growthPotential', label: 'Growth Potential' },
+                          { key: 'valuation', label: 'Valuation' },
+                          { key: 'catalysts', label: 'Catalysts' },
+                          { key: 'riskAssessment', label: 'Risk Assessment' },
+                        ].map(({ key, label }) => {
+                          const dimension = signal.analysis[key as keyof typeof signal.analysis] as any;
+                          return (
+                            <div key={key} className="bg-white rounded-lg p-4 border border-gray-200">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-sm font-semibold text-gray-700">{label}</span>
+                                <span className="text-lg font-bold text-gray-900">
+                                  {dimension.score}/{dimension.maxScore}
+                                </span>
+                              </div>
+                              {getDimensionBar(dimension.score, dimension.maxScore)}
+                              <p className="text-xs text-gray-600 mt-2 line-clamp-2">
+                                {dimension.reasoning}
+                              </p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-              <div>
-                <p className="text-xs text-gray-500 mb-1">Entry Price</p>
-                <p className="font-semibold text-gray-900">${parseFloat(tip.entry_price).toFixed(2)}</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 mb-1">Current Price</p>
-                <p className="font-semibold text-gray-900">
-                  ${tip.current_price ? parseFloat(tip.current_price).toFixed(2) : '-'}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 mb-1">Shares</p>
-                <p className="font-semibold text-gray-900">{parseFloat(tip.shares).toFixed(4)}</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 mb-1">AI Confidence</p>
-                <p className="font-semibold text-gray-900">{tip.ai_confidence}%</p>
-              </div>
-            </div>
+                    {/* Investment Thesis */}
+                    <div className="mb-6">
+                      <h4 className="text-lg font-bold text-gray-900 mb-2">Investment Thesis</h4>
+                      <p className="text-gray-700 leading-relaxed">{signal.analysis.investmentThesis}</p>
+                    </div>
 
-            <div className="mb-4">
-              <p className="text-sm text-gray-700">{tip.ai_reasoning}</p>
-            </div>
+                    <div className="grid grid-cols-2 gap-6">
+                      {/* Catalysts */}
+                      <div>
+                        <h4 className="text-lg font-bold text-gray-900 mb-3">Catalysts</h4>
+                        <ul className="space-y-2">
+                          {signal.catalysts.map((catalyst, idx) => (
+                            <li key={idx} className="flex items-start gap-2">
+                              <span className="text-green-600 mt-0.5">↗</span>
+                              <span className="text-sm text-gray-700">{catalyst}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
 
-            {tip.ai_catalysts && tip.ai_catalysts.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {tip.ai_catalysts.map((catalyst, idx) => (
-                  <span
-                    key={idx}
-                    className="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs"
-                  >
-                    {catalyst}
-                  </span>
-                ))}
+                      {/* Risk Factors */}
+                      <div>
+                        <h4 className="text-lg font-bold text-gray-900 mb-3">Risk Factors</h4>
+                        <ul className="space-y-2">
+                          {signal.riskFactors.map((risk, idx) => (
+                            <li key={idx} className="flex items-start gap-2">
+                              <span className="text-red-600 mt-0.5">⚠</span>
+                              <span className="text-sm text-gray-700">{risk}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-6 mt-6">
+                      {/* Strengths */}
+                      <div>
+                        <h4 className="text-sm font-semibold text-gray-700 mb-2">Strengths</h4>
+                        <ul className="space-y-1">
+                          {signal.analysis.strengths.map((strength, idx) => (
+                            <li key={idx} className="text-xs text-gray-600 flex items-start gap-1">
+                              <span className="text-green-600">✓</span>
+                              <span>{strength}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      {/* Concerns */}
+                      <div>
+                        <h4 className="text-sm font-semibold text-gray-700 mb-2">Concerns</h4>
+                        <ul className="space-y-1">
+                          {signal.analysis.concerns.map((concern, idx) => (
+                            <li key={idx} className="text-xs text-gray-600 flex items-start gap-1">
+                              <span className="text-yellow-600">!</span>
+                              <span>{concern}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
-
-            <div className="mt-4 pt-4 border-t border-gray-200 text-xs text-gray-500">
-              Entry: {new Date(tip.entry_date).toLocaleString()}
-            </div>
-          </div>
-        ))}
-
-        {filteredTips.length === 0 && (
-          <div className="text-center py-12 bg-white rounded-lg shadow-md border border-gray-200">
-            <Target className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600">No tips found for this filter</p>
-          </div>
-        )}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 };

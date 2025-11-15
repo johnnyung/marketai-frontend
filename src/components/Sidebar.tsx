@@ -1,5 +1,5 @@
 // src/components/Sidebar.tsx
-// Enhanced Sidebar with Login/Logout functionality + PHASE 2 Deep Dive
+// Enhanced Sidebar with Login/Logout functionality + PHASE 4 AI Tip Tracker
 
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
@@ -20,7 +20,7 @@ import {
   X,
   Link2,
   FileText,
-  Rocket  // NEW ICON for Opportunity Hub
+  Rocket
 } from 'lucide-react';
 
 const Sidebar: React.FC = () => {
@@ -41,10 +41,10 @@ const Sidebar: React.FC = () => {
     { path: '/deep-dive', icon: FileText, label: 'Deep Dive' },
     { path: '/digest', icon: BookOpen, label: 'Intelligence Digest' },
     { path: '/intelligence-threads', icon: Link2, label: 'Intelligence Threads' },
-    { path: '/opportunity-hub', icon: Rocket, label: 'Opportunity Hub' },  // NEW!
+    { path: '/opportunity-hub', icon: Rocket, label: 'Opportunity Hub' },
     
-    // PERFORMANCE TRACKING
-    { path: '/ai-tip-tracker', icon: Target, label: 'AI Tip Tracker' },
+    // PERFORMANCE TRACKING - PHASE 4
+    { path: '/ai-tip-tracker', icon: Target, label: 'AI Tip Tracker', badge: '🧠' },
     
     // TRADING & LEARNING
     { path: '/futures', icon: TrendingUp, label: 'Futures Trading' },
@@ -123,7 +123,7 @@ const Sidebar: React.FC = () => {
                   to={item.path}
                   onClick={() => setIsMobileMenuOpen(false)}
                   className={`
-                    flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all
+                    flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all relative
                     ${active 
                       ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30' 
                       : 'text-gray-700 hover:bg-gray-100'
@@ -131,7 +131,12 @@ const Sidebar: React.FC = () => {
                   `}
                 >
                   <Icon className="w-5 h-5 flex-shrink-0" />
-                  <span className="font-medium text-sm">{item.label}</span>
+                  <span className="font-medium text-sm flex-1">{item.label}</span>
+                  {item.badge && (
+                    <span className="text-base" title="Phase 4 - Pattern Recognition">
+                      {item.badge}
+                    </span>
+                  )}
                 </Link>
               );
             })}
@@ -152,7 +157,7 @@ const Sidebar: React.FC = () => {
         {/* Version Info */}
         <div className="px-4 pb-4 text-center">
           <p className="text-xs text-gray-500">
-            MarketAI v2.0 • © 2025
+            MarketAI v2.0 • Phase 4 🧠 • © 2025
           </p>
         </div>
       </aside>
