@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Search, TrendingUp, TrendingDown, Minus, Tag, Filter, RefreshCw, Newspaper, Globe, DollarSign, AlertCircle } from 'lucide-react';
-
+import { Search, TrendingUp, TrendingDown, Minus, Tag, Filter, Newspaper, Globe, DollarSign, AlertCircle } from 'lucide-react';
+import WorkflowButton from '../components/WorkflowButton';
 import { API_URL } from '../config/api';
 
 interface DigestEntry {
@@ -21,6 +21,7 @@ const Digest: React.FC = () => {
   const [filteredEntries, setFilteredEntries] = useState<DigestEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [generatingThreads, setGeneratingThreads] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSource, setSelectedSource] = useState('all');
@@ -57,7 +58,6 @@ const Digest: React.FC = () => {
 
       if (response.ok) {
         const data = await response.json();
-        // Backend returns array directly
         setEntries(Array.isArray(data) ? data : []);
         setLastRefresh(new Date());
       } else {
@@ -72,10 +72,6 @@ const Digest: React.FC = () => {
   };
 
   const triggerIngestion = async () => {
-    if (!confirm('This will collect fresh data from all sources (2-3 minutes). Continue?')) {
-      return;
-    }
-    
     setRefreshing(true);
     try {
       const token = localStorage.getItem('auth_token');
@@ -98,6 +94,31 @@ const Digest: React.FC = () => {
       alert('❌ Failed to start data collection');
     }
     setRefreshing(false);
+  };
+
+  const generateThreads = async () => {
+    setGeneratingThreads(true);
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`${API_URL}/api/intelligence/threads/generate`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        alert(`✅ Generated ${result.threadsCreated || 0} intelligence threads!`);
+      } else {
+        alert('❌ Failed to generate threads');
+      }
+    } catch (err) {
+      console.error('Failed to generate threads:', err);
+      alert('❌ Failed to generate threads');
+    }
+    setGeneratingThreads(false);
   };
 
   const filterEntries = () => {
@@ -202,25 +223,43 @@ const Digest: React.FC = () => {
     <div className="max-w-7xl mx-auto px-4 py-8">
       {/* Header */}
       <div className="mb-8">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">📰 Intelligence Digest</h1>
-            <p className="text-gray-600">
-              Raw intelligence feed from all sources • {entries.length} total entries
-            </p>
-            <p className="text-sm text-gray-500 mt-1">
-              Searchable database of news, social, political, and market intelligence
-            </p>
-          </div>
-          <button
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">📰 Intelligence Digest</h1>
+          <p className="text-gray-600">
+            Raw intelligence feed from all sources • {entries.length} total entries
+          </p>
+          <p className="text-sm text-gray-500 mt-1">
+            Searchable database of news, social, political, and market intelligence
+          </p>
+        </div>
+
+        {/* Workflow Buttons */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <WorkflowButton
+            stepNumber={1}
+            title="Fetch Fresh Data"
+            description="Pull latest market news, social media, and intelligence"
+            timeEstimate="~3 minutes"
+            icon="🔄"
             onClick={triggerIngestion}
             disabled={refreshing}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-            title="Collect fresh data from all sources"
-          >
-            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-            {refreshing ? 'Collecting...' : 'Refresh All Data'}
-          </button>
+            loading={refreshing}
+            color="blue"
+          />
+
+          <WorkflowButton
+            stepNumber={2}
+            title="Connect Related Events"
+            description="AI identifies patterns and connections across entries"
+            timeEstimate="~2 minutes"
+            icon="🧵"
+            onClick={generateThreads}
+            disabled={generatingThreads || entries.length === 0}
+            loading={generatingThreads}
+            disabledReason={entries.length === 0 ? "Run Step 1 first" : undefined}
+            prerequisite="After Step 1"
+            color="purple"
+          />
         </div>
 
         {lastRefresh && (
@@ -392,13 +431,7 @@ const Digest: React.FC = () => {
           <div className="text-center py-12 bg-white rounded-lg shadow-md border border-gray-200">
             <Newspaper className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <p className="text-gray-600 mb-4">No intelligence entries yet</p>
-            <button
-              onClick={triggerIngestion}
-              disabled={refreshing}
-              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
-            >
-              Run First Data Collection
-            </button>
+            <p className="text-sm text-gray-500 mb-6">Click "Fetch Fresh Data" above to start collecting intelligence</p>
           </div>
         )}
       </div>
