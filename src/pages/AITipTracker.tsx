@@ -26,12 +26,17 @@ const AITipTracker: React.FC = () => {
         aiTipTrackerService.getPatternInsights()
       ]);
       
-      // FILTER OUT OLD SIGNALS WITHOUT PHASE 4 DATA
+      // FIXED: Only require score and probability, not full analysis object
+      // Full analysis object is not stored in database, only scores are
       const validSignals = signalsData.filter(s => 
         s.analysisScore !== undefined && 
-        s.successProbability !== undefined &&
-        s.analysis !== undefined
+        s.successProbability !== undefined
       );
+      
+      console.log(`📊 AI Tip Tracker: Loaded ${validSignals.length} of ${signalsData.length} signals`);
+      if (validSignals.length < signalsData.length) {
+        console.log(`⚠️ Filtered out ${signalsData.length - validSignals.length} signals without scores`);
+      }
       
       setSignals(validSignals);
       setPatternInsights(insightsData);
@@ -184,127 +189,52 @@ const AITipTracker: React.FC = () => {
           </div>
           <div className="bg-white rounded-lg border border-gray-200 p-4">
             <div className="text-sm text-gray-600">Pattern Learning</div>
-            <div className="text-2xl font-bold text-purple-600">
-              {patternInsights ? 'Active 🧠' : 'Collecting'}
+            <div className="text-lg font-bold text-purple-600">
+              {patternInsights ? '✅ Active' : '📊 Collecting'}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Pattern Insights */}
-      {patternInsights && (
-        <div className="mb-6 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg border border-purple-200 p-6">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">🧠 Pattern Insights</h2>
-          
-          <div className="grid grid-cols-2 gap-6">
-            {/* Dimension Weights */}
-            <div>
-              <h3 className="text-sm font-semibold text-gray-700 mb-3">Learned Dimension Weights</h3>
-              <div className="space-y-2">
-                {Object.entries(patternInsights.dimensionWeights)
-                  .sort(([, a], [, b]) => b - a)
-                  .slice(0, 4)
-                  .map(([dimension, weight]) => (
-                    <div key={dimension} className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600 capitalize">
-                        {dimension.replace(/([A-Z])/g, ' $1').trim()}
-                      </span>
-                      <div className="flex items-center gap-2">
-                        <div className="w-24 bg-gray-200 rounded-full h-2">
-                          <div
-                            className="bg-purple-500 h-2 rounded-full"
-                            style={{ width: `${weight * 100}%` }}
-                          />
-                        </div>
-                        <span className="text-sm font-semibold text-gray-700">
-                          {(weight * 100).toFixed(0)}%
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-              </div>
-            </div>
-
-            {/* Performance Stats */}
-            <div>
-              <h3 className="text-sm font-semibold text-gray-700 mb-3">Performance Metrics</h3>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Total Analyzed:</span>
-                  <span className="font-semibold">{patternInsights.totalAnalyzed}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Win Rate:</span>
-                  <span className="font-semibold text-green-600">
-                    {(patternInsights.winRate * 100).toFixed(1)}%
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Avg Return:</span>
-                  <span className="font-semibold text-blue-600">
-                    {(patternInsights.avgReturn * 100).toFixed(1)}%
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Pattern Confidence:</span>
-                  <span className="font-semibold text-purple-600">
-                    {(patternInsights.confidence * 100).toFixed(0)}%
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-4 pt-4 border-t border-purple-200">
-            <p className="text-sm text-gray-600">
-              💡 The system learns from closed positions to improve future recommendations.
-              Current confidence: <span className="font-semibold">{(patternInsights.confidence * 100).toFixed(0)}%</span>
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Filters */}
-      <div className="mb-6 bg-white rounded-lg border border-gray-200 p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex gap-2">
-            <span className="text-sm font-medium text-gray-700">Filter:</span>
-            {(['ALL', 'BUY', 'HOLD', 'WATCH'] as const).map(f => (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
-                className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
-                  filter === f
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                {f}
-              </button>
-            ))}
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-gray-700">Sort by:</span>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as any)}
-              className="px-3 py-1 border border-gray-300 rounded text-sm"
+      {/* Filter & Sort */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-gray-600">Filter:</span>
+          {(['ALL', 'BUY', 'HOLD', 'WATCH'] as const).map((f) => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`px-3 py-1 rounded-lg text-sm font-semibold transition ${
+                filter === f
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
             >
-              <option value="score">Analysis Score</option>
-              <option value="probability">Success Probability</option>
-              <option value="gain">Predicted Gain</option>
-            </select>
-          </div>
+              {f}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-gray-600">Sort by:</span>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as any)}
+            className="px-3 py-1 border border-gray-300 rounded-lg text-sm"
+          >
+            <option value="score">Analysis Score</option>
+            <option value="probability">Success Probability</option>
+            <option value="gain">Predicted Gain</option>
+          </select>
         </div>
       </div>
 
       {/* Signals List */}
       {filteredSignals.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
+        <div className="text-center py-12 bg-white rounded-lg shadow-md border border-gray-200">
           <div className="text-6xl mb-4">⚡</div>
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">No AI Signals Yet</h3>
-          <p className="text-gray-600 mb-6">
+          <h3 className="text-xl font-semibold text-gray-700 mb-2">No AI Signals Yet</h3>
+          <p className="text-gray-600 mb-4">
             Click "Generate AI Picks" above to create investment recommendations
           </p>
           <p className="text-sm text-gray-500">
@@ -316,61 +246,66 @@ const AITipTracker: React.FC = () => {
           {filteredSignals.map((signal) => (
             <div
               key={signal.id}
-              className="bg-white rounded-lg border-2 border-gray-200 hover:border-blue-300 transition-all overflow-hidden"
+              className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden hover:shadow-lg transition"
             >
-              {/* Signal Header */}
-              <div
-                className="p-6 cursor-pointer"
-                onClick={() => setExpandedSignal(expandedSignal === signal.id ? null : signal.id)}
-              >
+              <div className="p-6">
+                {/* Signal Header */}
                 <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-2xl font-bold text-gray-900">{signal.ticker}</h3>
-                      <span className="text-gray-600">{signal.companyName}</span>
-                      <span
-                        className={`px-3 py-1 rounded-full text-sm font-bold ${
-                          signal.action === 'BUY'
-                            ? 'bg-green-100 text-green-700'
-                            : signal.action === 'HOLD'
-                            ? 'bg-blue-100 text-blue-700'
-                            : 'bg-orange-100 text-orange-700'
-                        }`}
-                      >
-                        {signal.action}
-                      </span>
+                  <div className="flex items-center gap-4">
+                    <div className="text-3xl font-bold text-gray-900">{signal.ticker}</div>
+                    <div>
+                      <div className="text-lg font-semibold text-gray-700">{signal.companyName}</div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span
+                          className={`px-3 py-1 rounded-full text-sm font-bold border ${
+                            aiTipTrackerService.getRecommendationColor(signal.action)
+                          }`}
+                        >
+                          {signal.action}
+                        </span>
+                        <span className="text-sm text-gray-600">{signal.confidence}% confidence</span>
+                      </div>
                     </div>
-                    <p className="text-gray-700">{signal.investmentThesis}</p>
                   </div>
 
-                  <div className="flex gap-4 ml-6">
-                    <div className="text-center">
-                      <div className="text-sm text-gray-600">Analysis Score</div>
-                      <div className="text-3xl font-bold text-blue-600">
-                        {signal.analysisScore}/100
-                      </div>
+                  {/* Scores */}
+                  <div className="text-right">
+                    <div className="text-3xl font-bold text-blue-600">
+                      {signal.analysisScore}/100
                     </div>
-                    <div className="text-center">
-                      <div className="text-sm text-gray-600">Success Probability</div>
-                      <div className="text-3xl font-bold text-green-600">
+                    <div className="text-sm text-gray-600">Analysis Score</div>
+                    <div className="mt-2">
+                      <span
+                        className={`text-lg font-bold ${aiTipTrackerService.getProbabilityColor(
+                          signal.successProbability || 0
+                        )}`}
+                      >
                         {signal.successProbability}%
-                      </div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-sm text-gray-600">Predicted Gain</div>
-                      <div className="text-3xl font-bold text-purple-600">
-                        +{signal.predictedGainPct}%
-                      </div>
+                      </span>
+                      <div className="text-xs text-gray-500">Success Probability</div>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between text-sm">
-                  <div className="flex gap-4 text-gray-600">
+                {/* Reasoning */}
+                <div className="mb-4">
+                  <h4 className="font-semibold text-gray-900 mb-2">AI Reasoning</h4>
+                  <p className="text-gray-700 text-sm">{signal.reasoning}</p>
+                </div>
+
+                {/* Quick Stats */}
+                <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+                  <div className="flex items-center gap-4 text-sm text-gray-600">
+                    <span>📈 Target: +{signal.predictedGainPct}%</span>
                     <span>💰 Entry: ${signal.entryPrice?.toFixed(2) || 'N/A'}</span>
                     <span>⏱️ {signal.timeHorizon}</span>
                   </div>
-                  <button className="text-blue-600 hover:text-blue-700 font-medium">
+                  <button
+                    onClick={() =>
+                      setExpandedSignal(expandedSignal === signal.id ? null : signal.id)
+                    }
+                    className="text-blue-600 hover:text-blue-700 font-medium"
+                  >
                     {expandedSignal === signal.id ? '▲ Hide Details' : '▼ Show Details'}
                   </button>
                 </div>
