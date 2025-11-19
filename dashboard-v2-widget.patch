@@ -1,0 +1,4 @@
+# Add import at top (after line 5)
+import V2IntelligenceWidget from '../components/V2IntelligenceWidget';
+
+# Add widget to the grid (search for the stats cards section)
